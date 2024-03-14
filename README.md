@@ -1,1 +1,1 @@
-# automatic_pulsar_endpoint_addition
+# Automatic addition of Pulsar endpoint
