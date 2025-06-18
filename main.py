@@ -7,6 +7,11 @@ import yaml
 import random
 import string
 from ansible_vault import Vault
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--dry-run', action='store_true', help='Run script without making any changes')
+args = parser.parse_args()
 
 
 # Load config from config.json
@@ -105,9 +110,11 @@ for user in active_users_with_byoc_pulsar:
         };
 
 # Save the updated repo_destinations_yaml to the corresponding repo yaml file
-with open(repo_destinations_file, 'w') as file:
-    yaml.dump(repo_destinations_yaml, file)
-
+if not args.dry_run:
+    with open(repo_destinations_file, 'w') as file:
+        yaml.dump(repo_destinations_yaml, file)
+else:
+    print(f"[DRY-RUN] Would write updated destinations to {repo_destinations_file}")
 ############
 # RABBITMQ #
 ############
@@ -129,9 +136,11 @@ for user in active_users_with_byoc_pulsar:
 
 
 # Save the updated repo_mq_yaml to the corresponding repo yaml file
-with open(repo_mq_file, 'w') as file:
-    yaml.dump(repo_mq_yaml, file)
-
+if not args.dry_run:
+    with open(repo_mq_file, 'w') as file:
+        yaml.dump(repo_mq_yaml, file)
+else:
+    print(f"[DRY-RUN] Would write updated MQ settings to {repo_mq_file}")
 ############
 # JOB_CONF #
 ############
@@ -162,9 +171,11 @@ for user in active_users_with_byoc_pulsar:
         repo_job_conf_yaml["galaxy_jobconf"]["plugins"].append(new_plugin)
 
 # Save the updated repo_job_conf_yaml to the corresponding repo yaml file
-with open(repo_job_conf_file, 'w') as file:
-    yaml.dump(repo_job_conf_yaml, file, default_flow_style=False, width=float("inf"))
-
+if not args.dry_run:
+    with open(repo_job_conf_file, 'w') as file:
+        yaml.dump(repo_job_conf_yaml, file, default_flow_style=False, width=float("inf"))
+else:
+    print(f"[DRY-RUN] Would write repo job conf to {repo_job_conf_file}")
 #####################
 # RABBITMQ PASSWORD #
 #####################
@@ -199,9 +210,14 @@ for user in active_users_with_byoc_pulsar:
 encrypted_data = vault.dump(pulsar_secrets);
 
 # Save the updated encrypted data back to the file
-with open(repo_pulsar_secrets_file, 'w') as file:
-    file.write(encrypted_data)
+if not args.dry_run:
+    with open(repo_pulsar_secrets_file, 'w') as file:
+        file.write(encrypted_data)
+else:
+    print(f"[DRY-RUN] Would write encrypted data to {repo_pulsar_secrets_file}")
 
+
+if not args.dry_run:
     # Commit and push changes to the repository
     repo.index.add([repo_destinations_file, repo_mq_file, repo_job_conf_file, repo_pulsar_secrets_file])
     repo.index.commit("Update Pulsar configurations for active users with BYOC Pulsar preferences")
@@ -214,19 +230,17 @@ with open(repo_pulsar_secrets_file, 'w') as file:
         "body": "This pull request updates the Pulsar configurations for active users with BYOC Pulsar preferences.",
         "head": config["branch_name"],
         "base": "main"
-    }
-
+        }
     response = requests.post(
         urljoin(config["repo_api_url"], '/pulls'),
         headers={'Authorization': f'token {secrets["github_token"]}'},
         json=pr_data
-    )
-
+        )
     if response.status_code != 201:
         raise Exception(f"Pull request creation failed with status code {response.status_code}: {response.text}")
-
     print("Pull request created successfully.")
-
+else:
+    print(f"[DRY-RUN] Would create the pull request with the following data: {pr_data}")
 
 
 
